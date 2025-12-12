@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEZIS Smart Booking - Map V2</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+
+        :root {
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --radius: 16px;
+            --success: #10b981; --success-bg: #ecfdf5;
+            --danger: #ef4444; --danger-bg: #fef2f2;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-color); color: var(--text-main); font-size: 14px; line-height: 1.5; }
+        
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .grid-layout { 
+            display: grid; 
+            grid-template-columns: 1.8fr 1fr; 
+            gap: 2rem; 
+            position: relative; 
+            align-items: start; 
+        }
+        header { 
+            background: var(--card-bg); padding: 1rem 1.5rem; 
+            border-radius: var(--radius); box-shadow: var(--shadow-sm); 
+            display: flex; justify-content: space-between; align-items: center; 
+            margin-bottom: 2rem; border: 1px solid var(--border);
+        }
+        .logo-box { width: 44px; height: 44px; background: linear-gradient(135deg, var(--primary), var(--primary-hover)); color: white; border-radius: 12px; display: grid; place-items: center; font-weight: 800; font-size: 1.4rem; }
+        .user-pill { background: #f8fafc; padding: 8px 16px; border-radius: 30px; border: 1px solid var(--border); font-weight: 600; display: flex; gap: 12px; align-items: center; }
+        .control-panel { background: var(--card-bg); padding: 1.5rem; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 1.5rem; }
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; align-items: end; }
+        .input-control { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: #f8fafc; outline: none; transition: 0.2s; }
+        .input-control:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-primary:hover { transform: translateY(-1px); background: var(--primary-hover); }
+        .btn-primary:disabled { background: #cbd5e1; cursor: not-allowed; transform: none; }
+        .view-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; }
+        .day-tabs { display: flex; background: #e2e8f0; padding: 4px; border-radius: 12px; gap: 4px; }
+        .tab-btn { border: none; background: transparent; padding: 8px 20px; border-radius: 9px; font-weight: 600; color: var(--text-muted); cursor: pointer; }
+        .tab-btn.active { background: white; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+        .room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+        .room-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; cursor: pointer; transition: 0.2s; }
+        .room-card:hover { border-color: var(--primary); transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+        .room-card.active { border-color: var(--primary); background: #eff6ff; ring: 2px solid var(--primary); }
+        
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; text-transform: uppercase; }
+        .badge.free { background: var(--success-bg); color: var(--success); }
+        .badge.busy { background: var(--danger-bg); color: var(--danger); }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+        .timeline-bar { height: 6px; background: #e2e8f0; border-radius: 3px; display: flex; margin-top: 12px; overflow: hidden; }
+        .t-seg { height: 100%; }
+        .t-free { background: var(--success); opacity: 0.4; }
+        .t-busy { background: var(--danger); opacity: 0.4; }
+
+        .details-panel { 
+            position: sticky; 
+            top: 20px; 
+            background: white; 
+            border-radius: var(--radius); 
+            border: 1px solid var(--border); 
+            box-shadow: var(--shadow-lg);
+            height: fit-content; 
+            max-height: calc(100vh - 40px);
+            overflow-y: auto; 
+            z-index: 50;
+        }
+        .details-header { padding: 1.5rem; border-bottom: 1px solid var(--border); background: #f8fafc; }
+        .details-body { padding: 1.5rem; }
+        .schedule-list { list-style: none; margin-top: 1rem; }
+        .schedule-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
+
+        .map-wrapper { 
+            background: #fff; border-radius: var(--radius); border: 2px solid #94a3b8; 
+            height: 600px; position: relative; overflow: hidden; 
+            background-image: 
+                linear-gradient(rgba(37,99,235,0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(37,99,235,0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.05);
+        }
+        .map-wall { position: absolute; background: #334155; z-index: 1; }
+        .map-corridor { 
+            position: absolute; background: #f1f5f9; z-index: 0; 
+            display: flex; align-items: center; justify-content: center;
+            color: #cbd5e1; font-weight: 800; font-size: 1rem; letter-spacing: 4px; text-transform: uppercase;
+        }
+        .map-stairs {
+            position: absolute; background: repeating-linear-gradient(45deg, #e2e8f0, #e2e8f0 5px, #fff 5px, #fff 10px);
+            border: 1px solid #94a3b8; z-index: 2; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; color: #64748b;
+        }
+        .map-wc {
+            position: absolute; background: #e0f2fe; border: 1px solid #94a3b8; z-index: 2;
+            display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; color: #0284c7;
+        }
+        .map-room { 
+            position: absolute; background: white; border: 2px solid #475569; border-radius: 0; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            cursor: pointer; font-weight: 700; transition: all 0.3s; z-index: 5;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        }
+        .map-room:hover { transform: scale(1.05); z-index: 10; box-shadow: 0 10px 20px rgba(0,0,0,0.2); border-color: var(--primary); }
+        .map-room.active { background: #eff6ff; border-color: var(--primary); z-index: 8; box-shadow: 0 0 0 4px rgba(37,99,235,0.3); }
+        
+        .map-room.free { border-bottom: 5px solid var(--success); }
+        .map-room.busy { border-bottom: 5px solid var(--danger); background: #fef2f2; color: #94a3b8; }
+        .map-door {
+            position: absolute; width: 14px; height: 4px; background: white; border: 1px solid #475569; z-index: 6;
+        }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.7); backdrop-filter: blur(4px); z-index: 100; display: none; align-items: center; justify-content: center; }
+        .modal { background: white; width: 95%; max-width: 450px; border-radius: 20px; padding: 2rem; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .conflict-msg { display: none; background: #fef2f2; color: #b91c1c; padding: 12px; border-radius: 8px; margin-top: 15px; border: 1px solid #fecaca; align-items: center; gap: 10px; }
+        .conflict-msg.visible { display: flex; animation: shake 0.4s; }
+        @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+
+        #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); background: #1e293b; color: white; padding: 12px 24px; border-radius: 30px; transition: 0.4s; opacity: 0; z-index: 200; font-weight: 600; display: flex; gap: 8px; }
+        #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+        @media (max-width: 1024px) { .grid-layout { grid-template-columns: 1fr; } .details-panel { position: static; height: auto; } }
+        @media (max-width: 768px) {
+            .grid-layout { display: block !important; }
+            .left-col, .details-panel { width: 100% !important; position: static !important; }
+        }
+
+        /* --- START: NEW TEACHER BOOKING CSS (ЗАСВАРЛАСАН) --- */
+        /* Хуучин .modal нэрийг .teacher-modal болгож өөрчлөв (Давхцлыг арилгахын тулд) */
+        .teacher-modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1000; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.5); 
+            backdrop-filter: blur(3px);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Flex ашиглаж төвд харуулахын тулд */
+        .teacher-modal.show {
+            display: flex;
+        }
+
+        .teacher-modal-content {
+            background-color: var(--card-bg);
+            margin: auto; 
+            padding: 30px;
+            border-radius: var(--radius);
+            width: 90%;
+            max-width: 500px;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            animation: slideUp 0.3s ease;
+        }
+
+        .close-btn {
+            color: var(--text-muted);
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            transition: color 0.2s;
+            line-height: 1;
+        }
+
+        .close-btn:hover,
+        .close-btn:focus {
+            color: var(--text-main);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .teacher-modal-content h3 {
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: var(--text-main); }
+        .form-group input[type="text"],
+        .form-group input[type="email"],
+        .form-group input[type="datetime-local"],
+        .form-group select,
+        .form-group input[type="time"] { 
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+            outline: none;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .submit-btn:hover { background-color: var(--primary-hover); }
+
+        .teacher-booking-container {
+            padding-top: 15px;
+            border-top: 1px dashed var(--border);
+            margin-top: 15px;
+        }
+
+        .teacher-booking-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--success); 
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .teacher-booking-btn:hover { background-color: #059669; }
+        
+        .day-select {
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    margin-top: 6px;
+}
+
+.day-pill {
+    flex: 1;
+    padding: 10px 0;
+    text-align: center;
+    border-radius: 30px;
+    border: 1px solid #dcdcdc;
+    background: #f8f8f8;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+    user-select: none;
+}
+
+.day-pill:hover {
+    background: #ededed;
+}
+
+.day-pill.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+}
+
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <header>
+            <div style="display:flex; align-items:center; gap:14px;">
+                <div class="logo-box">C</div>
+                <div>
+                    <h1 style="font-size:1.4rem; font-weight:800;">CLASSENT</h1>
+                    <small style="color:var(--text-muted);">СУЛ АНГИ ЗАХИАЛГА</small>
+                </div>
+            </div>
+            <div class="user-pill">
+                <div style="width:8px; height:8px; background:var(--success); border-radius:50%;"></div>
+                <span id="liveClock">00:00</span>
+                <span style="border-left:1px solid #cbd5e1; padding-left:12px; color:var(--text-muted);">ОЮУТНЫ КОД</span>
+            </div>
+        </header>
+
+        <main class="grid-layout">
+            <div class="left-col">
+                <section class="control-panel">
+                    <form id="filterForm" class="filter-grid">
+                        <div style="grid-column: span 1;">
+                            <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px;">БАРИЛГА</label>
+                            <select class="input-control"><option value="D">A Блок</option></select>
+                            
+
+
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px;">СУУДАЛ (MIN)</label>
+                            <input type="number" id="fSeats" class="input-control" value="" min="10">
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px;">ТӨРӨЛ</label>
+                            <select id="fType" class="input-control">
+                                <option value="all">Бүгд</option><option value="Lecture">Лекц</option><option value="Seminar">Семинар</option><option value="Lab">Лаб</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-primary">Шүүх</button>
+                    </form>
+                </section>
+
+                <div class="view-controls">
+                    <div class="day-tabs" id="dayTabs">
+                        <button class="tab-btn" data-day="Mon">Даваа</button>
+                        <button class="tab-btn" data-day="Tue">Мягмар</button>
+                        <button class="tab-btn" data-day="Wed">Лхагва</button>
+                        <button class="tab-btn" data-day="Thu">Пүрэв</button>
+                        <button class="tab-btn" data-day="Fri">Баасан</button>
+                        <button class="tab-btn" data-day="Fri">Бямба</button>
+                        <button class="tab-btn" data-day="Fri">Ням</button>
+
+
+                    </div>
+                    <div style="background:white; border:1px solid var(--border); border-radius:10px; display:flex; padding:2px;">
+                        <button id="btnList" style="border:none; padding:8px 16px; border-radius:8px; background:#eff6ff; color:var(--primary); font-weight:600; cursor:pointer;">Жагсаалт</button>
+                        <button id="btnMap" style="border:none; padding:8px 16px; border-radius:8px; background:transparent; color:var(--text-muted); font-weight:600; cursor:pointer;">Зураг</button>
+                    </div>
+                </div>
+
+                <div id="listView">
+                    <h3 style="margin-bottom:1rem; font-weight:800; color:var(--text-main);">5-р давхар</h3>
+                    <div class="room-grid" id="grid5F" style="margin-bottom:2rem;"></div>
+                    <h3 style="margin-bottom:1rem; font-weight:800; color:var(--text-main);">6-р давхар</h3>
+                    <div class="room-grid" id="grid6F"></div>
+                </div>
+
+                <div id="mapView" style="display:none;">
+                    <div class="map-wrapper">
+                        <div style="position:absolute; top:20px; left:20px; font-weight:900; color:#cbd5e1; font-size:2rem; letter-spacing:-1px; z-index:0;">FLOOR PLAN LEVEL 6</div>
+                        
+                        <div class="map-corridor" style="top:40%; left:0; width:100%; height:80px;">CORRIDOR</div>
+                        <div class="map-stairs" style="top:5%; left:2%; width:60px; height:100px;">STAIRS<br>A</div>
+                        <div class="map-stairs" style="top:5%; right:2%; width:60px; height:100px;">STAIRS<br>B</div>
+                        <div class="map-wc" style="bottom:5%; left:2%; width:50px; height:60px;">WC</div>
+                        <div class="map-wc" style="bottom:5%; right:2%; width:50px; height:60px;">WC</div>
+
+                        <div class="map-room" data-room="d601" style="top:5%; left:12%; width:10%; height:30%;">601<br><small>(Lecture)</small></div>
+                        <div class="map-door" style="top:34%; left:16%;"></div>
+                        
+                        <div class="map-room" data-room="d602" style="top:5%; left:23%; width:10%; height:30%;">602<br><small>(Seminar)</small></div>
+                        <div class="map-door" style="top:34%; left:27%;"></div>
+                        
+                        <div class="map-room" data-room="d603" style="top:5%; left:35%; width:10%; height:30%;">603<br><small>(Lab)</small></div>
+                        <div class="map-door" style="top:34%; left:39%;"></div>
+                        
+                        <div class="map-room" data-room="d607" style="top:5%; left:46%; width:10%; height:30%;">607<br><small>(Lecture)</small></div>
+                        <div class="map-door" style="top:34%; left:50%;"></div>
+
+                        <div class="map-room" data-room="d606" style="top:5%; left: 57%; width:10%; height:30%;">606<br><small>(Lab)</small></div>
+                        <div class="map-door" style="top:34%; left:61%;"></div>
+                        
+                        <div class="map-room" data-room="d604" style="top:5%; left:68%; width:10%; height:30%;">604<br><small>(Seminar)</small></div>
+                        <div class="map-door" style="top:34%; left:72%;"></div>
+
+                        <div class="map-room" data-room="d605" style="top:5%; left:79%; width:10%; height:30%;">605<br><small>(Seminar)</small></div>
+                        <div class="map-door" style="top:34%; left:83%;"></div>
+
+                        <div style="position:absolute; bottom:38%; left:50%; transform:translateX(-50%); font-weight:700; color:#94a3b8; font-size:0.8rem;">SOUTH WING (5F)</div>
+
+                        <div class="map-room" data-room="d501" style="bottom:5%; left:10%; width:10%; height:25%;">501<br><small>(Seminar)</small></div>
+                        <div class="map-door" style="bottom:29%; left:14%;"></div>
+
+                        <div class="map-room" data-room="d502" style="bottom:5%; left:22%; width:10%; height:25%;">502<br><small>(Seminar)</small></div>
+                        <div class="map-door" style="bottom:29%; left:26%;"></div>
+
+                        <div class="map-room" data-room="d503" style="bottom:5%; left:34%; width:10%; height:25%;">503<br><small>(Seminar)</small></div>
+                        <div class="map-door" style="bottom:29%; left:38%;"></div>
+
+                        <div class="map-room" data-room="d504" style="bottom:5%; left:46%; width:10%; height:25%;">504<br><small>(Seminar)</small></div>
+                        <div class="map-door" style="bottom:29%; left:50%;"></div>
+
+                        <div class="map-room" data-room="d505" style="bottom:5%; left:58%; width:10%; height:25%;">505<br><small>(Seminar)</small></div>
+                        <div class="map-door" style="bottom:29%; left:62%;"></div>
+
+                        <div class="map-room" data-room="d506" style="bottom:5%; left:69%; width:10%; height:25%;">506<br><small>(Seminar)</small></div>
+                        <div class="map-door" style="bottom:29%; left:73%;"></div>
+
+                         <div class="map-room" data-room="d507" style="bottom:5%; left:80%; width:10%; height:25%;">507<br><small>(Seminar)</small></div>
+                        <div class="map-door" style="bottom:29%; left:84%;"></div>
+
+                    </div>
+                    <p style="text-align:center; color:var(--text-muted); margin-top:10px;">💡 Өрөөг сонгож дэлгэрэнгүй хуваарийг харна уу.</p>
+                </div>
+            </div>
+
+            
+            <aside class="details-panel" id="detailsPanel">
+                <div class="details-header">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div>
+                            <h2 id="dtName" style="font-size:1.8rem; font-weight:800; color:var(--primary); margin:0;">...</h2>
+                            <p id="dtMeta" style="color:var(--text-muted); margin-top:4px;">Өрөөг сонгоно уу</p>
+                        </div>
+                        <div id="dtStatusBadge"></div>
+                    </div>
+                </div>
+                <div class="details-body">
+                    <div id="noSelectionMsg" style="text-align:center; padding:2rem; color:var(--text-muted);">
+                        <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-bottom:10px; opacity:0.3;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        <p>Зүүн талаас өрөө сонгоно уу.</p>
+                    </div>
+
+                    <div id="roomContent" style="display:none;">
+                        <h4 style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:1rem;">Өнөөдрийн хуваарь</h4>
+                        <ul class="schedule-list" id="scheduleList"></ul>
+
+                        <div style="margin-top:2rem; padding-top:1.5rem; border-top:1px solid var(--border);">
+                            <button id="openBookModal" class="btn-primary" style="width:100%;">
+                                Цаг Захиалах (Оюутан)
+                            </button>
+                            <p style="font-size:0.75rem; color:var(--text-muted); text-align:center; margin-top:10px;">Давхцалгүй цагийг сонгоно уу.</p>
+                        </div>
+
+                        <div class="teacher-booking-container">
+                            <button id="openTeacherModal" class="teacher-booking-btn">
+                                <span>🎓</span> Багшийн зөвлөгөөний захиалга
+                            </button>
+                        </div>
+                        </div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div style="display:flex; justify-content:space-between; margin-bottom:1.5rem;">
+                <h3 style="font-size:1.25rem; font-weight:800;">Захиалга үүсгэх</h3>
+                <button id="closeModal" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <form id="bookingForm">
+                <input type="hidden" id="bkRoomId">
+                <div style="background:#f8fafc; padding:12px; border-radius:10px; margin-bottom:1rem; border:1px solid var(--border);">
+                    <div style="font-weight:700; color:var(--primary);" id="bkRoomName">D-000</div>
+                    <div style="font-size:0.85rem;" id="bkDayName">...</div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+                    <div><label style="font-size:0.75rem; font-weight:700;">ЭХЛЭХ</label><input type="time" id="bkStart" class="input-control" required></div>
+                    <div><label style="font-size:0.75rem; font-weight:700;">ДУУСАХ</label><input type="time" id="bkEnd" class="input-control" required></div>
+                </div>
+                <div class="conflict-msg" id="conflictMsg">
+                    <span>⚠️ Сонгосон цагт хичээлтэй байна!</span>
+                </div>
+                <div style="margin-top:1rem;">
+                    <label style="font-size:0.75rem; font-weight:700;">ЗОРИЛГО</label>
+                    <textarea id="bkReason" rows="2" class="input-control" required placeholder="Жишээ: Бие даалт..."></textarea>
+                </div>
+                <button type="submit" id="btnConfirm" class="btn-primary" style="width:100%; margin-top:1.5rem;">Баталгаажуулах</button>
+            </form>
+        </div>
+    </div>
+<div id="teacherModalOverlay" class="teacher-modal">
+    <div class="teacher-modal-content">
+        <span class="close-btn" id="closeTeacherModal">&times;</span>
+        <h3>Багшийн цаг захиалга</h3>
+
+        <form id="teacherBookingForm">
+            <input type="hidden" id="tbRoomId">
+            <div class="form-group">
+                <label for="teacherSelect">Багш сонгох</label>
+                <select id="teacherSelect" required>
+                    <option value="">Сонгоно уу...</option>
+                    <option value="teacher1">Ууганболд</option>
+                    <option value="teacher2">Баярцэцэг</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+    <label>Өдөр сонгох</label>
+    <div class="day-select">
+        <div class="day-pill" data-day="Даваа">Да</div>
+        <div class="day-pill" data-day="Мягмар">Мя</div>
+        <div class="day-pill" data-day="Лхагва">Лх</div>
+        <div class="day-pill" data-day="Пүрэв">Пү</div>
+        <div class="day-pill" data-day="Баасан">Ба</div>
+    </div>
+    <input type="hidden" id="teacherDay" required>
+</div>
+
+            <div class="form-group">
+                <label for="teacherDept">Тэнхим</label>
+                <select id="teacherDept" required>
+                    <option value="">Сонгоно уу...</option>
+                    <option value="biz">Багш нарын өрөө</option>
+                    <option value="fin">C-501</option>
+                    <option value="acc">C-601</option>
+                    <option value="info">FREE ZONE</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Цаг сонгох</label>
+                <div style="display:flex; gap:10px;">
+                    <input type="time" id="tbStart" required>
+                    <span style="align-self:center;">-</span>
+                    <input type="time" id="tbEnd" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="teacherReason">Тайлбар</label>
+                <input type="text" id="teacherReason" placeholder="Нөхөлт хичээл, дугуйлан г.м" required>
+            </div>
+
+            <button type="submit" class="submit-btn" style="background:var(--success);">
+                Захиалах
+            </button>
+        </form>
+    </div>
+</div>
+
+    <div id="toast">✅ Амжилттай хадгалагдлаа!</div>
+    
+
+    <script>
+        // --- DATA (PRESERVED) ---
+        const roomData = {
+            'C501': { id: 'C501', name: 'C-501', floor: 5, seats: 24, type: 'Seminar', equipment: 'Проектор', weeklySchedule: { 'Mon': [ { start: '07:40', end: '10:30', event: 'LPMG302', isFree: false }, { start: '10:40', end: '12:30', event: 'MLS111', isFree: false }, { start: '12:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '16:10', event: 'E216', isFree: false },{ start: '16:20', end: '20:10', event: 'Free', isFree: true}, ], 'Tue': [ { start: '07:40', end: '10:30', event: 'ETEC116', isFree: false }, { start: '10:40', end: '13:30', event: 'ERMT224', isFree: false },{ start: '13:40', end: '14:10', event: 'Free', isFree: true }, { start: '14:20', end: '17:10', event: 'EDAV312', isFree: false },{ start: '17:20', end: '20:10', event: 'Free', isFree: true }, ], 'Wed': [ { start: '07:40', end: '10:30', event: 'Free', isFree: true },{ start: '10:40', end: '13:30', event: 'Free', isFree: true },{ start: '13:40', end: '14:10', event: 'Free', isFree: true }, { start: '14:20', end: '17:10', event: 'EIBD215', isFree: false },{ start: '17:20', end: '20:10', event: 'Free', isFree: true },], 'Thu': [ { start: '07:40', end: '10:30', event: 'LFMA101', isFree: false }, { start: '10:40', end: '13:30', event: 'LPON211', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '17:10', event: 'LAPP118', isFree: false },{ start: '17:20', end: '20:10', event: 'Free', isFree: true }, ], 'Fri': [ { start: '07:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'FIN222', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '17:10', event: 'Free', isFree: true },{ start: '17:20', end: '20:10', event: 'Free', isFree: true},], } },
+            'C502': { id: 'C502', name: 'C-502', floor: 5, seats: 24, type: 'Seminar', equipment: 'Проектор', weeklySchedule: { 'Mon': [ { start: '07:40', end: '10:30', event: 'MKT221', isFree: false },{ start: '10:40', end: '13:30', event: 'MKT341', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '16:10', event: 'Free', isFree: true },{ start: '16:20', end: '20:10', event: 'Free', isFree: true}, ], 'Tue': [ { start: '07:40', end: '10:30', event: 'MGM432', isFree: false }, { start: '10:40', end: '13:30', event: 'MKT443', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '16:10', event: 'MKT446', isFree: false },{ start: '17:20', end: '20:10', event: 'Free', isFree: true},], 'Wed': [ { start: '07:40', end: '10:30', event: 'MKT221', isFree: false }, { start: '10:40', end: '13:30', event: 'MKIM334', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '16:10', event: 'FIN122', isFree: false },{ start: '17:20', end: '20:10', event: 'Free', isFree: true},], 'Thu': [ { start: '07:40', end: '10:30', event: 'MKT221', isFree: false }, { start: '10:40', end: '13:30', event: 'MKT221', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '16:10', event: 'Free', isFree: true },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], 'Fri': [ { start: '07:40', end: '10:30', event: 'MKT221', isFree: false },{ start: '10:40', end: '13:30', event: 'MKT221', isFree: false },{ start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '16:10', event: 'Free', isFree: true },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], } },
+            'C503': { id: 'C503', name: 'C-503', floor: 5, seats: 24, type: 'Seminar', equipment: 'Проектор', weeklySchedule: { 'Mon': [ { start: '07:40', end: '10:30', event: 'HSS111', isFree: false }, { start: '10:40', end: '13:30', event: 'Free', isFree: true }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '16:10', event: 'HSS111', isFree: true },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], 'Tue': [ { start: '07:40', end: '10:30', event: 'MGM221', isFree: false }, { start: '10:40', end: '13:30', event: 'MGM331', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '16:10', event: 'Free', isFree: true },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], 'Wed': [ { start: '07:40', end: '10:30', event: 'BUS446', isFree: false }, { start: '10:40', end: '12:30', event: 'HSS241', isFree: false }, { start: '12:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '16:10', event: 'MLS111', isFree: false },{ start: '16:20', end: '20:10', event: 'Free', isFree: true}, ], 'Thu': [ { start: '07:40', end: '09:30', event: 'ENT221', isFree: false }, { start: '10:40', end: '13:30', event: 'MGM221', isFree: true }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '16:10', event: 'ACR111', isFree: true },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], 'Fri': [ { start: '07:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '12:30', event: 'HSS114', isFree: false }, { start: '12:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '16:10', event: 'Free', isFree: true },{ start: '16:20', end: '20:10', event: 'Free', isFree: true}, ], } },
+            'C504': { id: 'C504', name: 'C-504', floor: 5, seats: 24, type: 'Seminar', equipment: 'Проектор', weeklySchedule: { 'Mon': [ { start: '07:40', end: '10:30', event: 'MGM439', isFree: false }, { start: '10:40', end: '13:30', event: 'BACC221', isFree: false },{ start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '17:10', event: 'BLAW321', isFree: false },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], 'Tue': [ { start: '07:40', end: '10:30', event: 'BMKT221', isFree: false }, { start: '10:40', end: '13:30', event: 'FIN433', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '16:10', event: 'HSS241', isFree: false },{ start: '16:20', end: '20:10', event: 'Free', isFree: true}, ], 'Wed': [ { start: '07:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '16:10', event: 'MLS111', isFree: false },{ start: '16:20', end: '17:10', event: 'Free', isFree: true},{ start: '17:20', end: '19:10', event: 'MLS111', isFree: false}, ], 'Thu': [ { start: '07:40', end: '09:30', event: 'MAT115', isFree: false },{ start: '09:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'MGM121', isFree: false },{ start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '17:10', event: 'ECN111', isFree: false },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], 'Fri': [ { start: '07:40', end: '10:30', event: ' FIN221', isFree: false }, { start: '10:40', end: '12:30', event: 'MLS111', isFree: false },{ start: '12:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '17:10', event: 'Free', isFree: true },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], } },
+            'C505': { id: 'C505', name: 'C-505', floor: 5, seats: 24, type: 'Seminar', equipment: 'Проектор', weeklySchedule: { 'Mon': [ { start: '07:40', end: '20:10', event: 'Free', isFree: true }, ], 'Tue': [ { start: '07:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'CHS111B', isFree: false },{ start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '17:10', event: 'Free', isFree: true },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], 'Wed': [ { start: '07:40', end: '20:10', event: 'Free', isFree: true }, ], 'Thu': [ { start: '07:40', end: '10:30', event: 'SAE118A', isFree: false }, { start: '10:40', end: '13:30', event: 'Free', isFree: true },{ start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '17:10', event: 'ACE111A', isFree: false },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], 'Fri': [ { start: '07:40', end: '20:10', event: 'Free', isFree: true }, ], } },
+            'C506': { id: 'C506', name: 'C-506', floor: 5, seats: 24, type: 'Seminar', equipment: 'Проектор', weeklySchedule: { 'Mon': [ { start: '07:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'MAT115', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '17:10', event: 'LOO111', isFree: false },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], 'Tue': [ { start: '07:40', end: '09:30', event: 'MAT115', isFree: false }, { start: '10:40', end: '13:30', event: 'FIN432', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '16:10', event: 'MAT115', isFree: false },{ start: '16:20', end: '20:10', event: 'Free', isFree: true}, ], 'Wed': [ { start: '07:40', end: '09:30', event: 'MAT115', isFree: false }, { start: '10:40', end: '12:30', event: 'MAT115', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '17:10', event: 'BIS112', isFree: false },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], 'Thu': [ { start: '07:40', end: '10:30', event: 'Free', isFree: true },{ start: '10:40', end: '12:30', event: 'MAT115', isFree: false }, { start: '12:40', end: '13:30', event: 'THC121', isFree: false },{ start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '17:10', event: 'Free', isFree: true },{ start: '17:20', end: '20:10', event: 'FIN442', isFree: false}, ], 'Fri': [ { start: '07:40', end: '09:30', event: 'LOC111', isFree: false },{ start: '10:40', end: '13:30', event: 'LOC111', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '17:10', event: 'Free', isFree: true },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], } },
+            'C507': { id: 'C507', name: 'C-507', floor: 5, seats: 24, type: 'Seminar', equipment: 'Проектор', weeklySchedule: { 'Mon': [ { start: '07:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'ECN221', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '17:10', event: 'FIN441', isFree: false },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], 'Tue': [ { start: '07:40', end: '09:30', event: 'ECN221', isFree: false }, { start: '10:40', end: '13:30', event: 'MAT115', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '16:10', event: 'MLS111', isFree: false },{ start: '16:20', end: '20:10', event: 'Free', isFree: true}, ], 'Wed': [ { start: '07:40', end: '09:30', event: 'HSS111', isFree: false }, { start: '10:40', end: '13:30', event: 'FIN221', isFree: false }, { start: '13:30', end: '14:10', event: 'Free', isFree: true }, { start: '14:20', end: '16:10', event: 'HSS111', isFree: false },{ start: '16:20', end: '20:10', event: 'Free', isFree: true}, ], 'Thu': [ { start: '07:40', end: '09:30', event: 'ECN221', isFree: false },  { start: '10:40', end: '12:30', event: 'ECN221', isFree: false }, { start: '12:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '16:10', event: 'MAT115', isFree: false },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], 'Fri': [ { start: '07:40', end: '09:30', event: 'ECN221', isFree: false },  { start: '10:40', end: '12:30', event: 'ECN222', isFree: false }, { start: '12:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '17:10', event: 'Free', isFree: true },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], } },
+            'C508': { id: 'C508', name: 'C-508', floor: 5, seats: 24, type: 'Seminar', equipment: 'Проектор', weeklySchedule: { 'Mon': [ { start: '07:40', end: '10:30', event: 'MGM338', isFree: false }, { start: '10:40', end: '13:30', event: 'MGM435', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '17:10', event: 'MKM435', isFree: false },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], 'Tue': [ { start: '07:40', end: '10:30', event: 'MGM121', isFree: false }, { start: '10:40', end: '13:30', event: 'ECN111', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '17:10', event: 'ECN111', isFree: false },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], 'Wed': [ { start: '07:40', end: '10:30', event: 'Free', isFree: true },{ start: '10:40', end: '13:30', event: 'ECN116', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '17:10', event: 'ECOM301', isFree: false },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], 'Thu': [ { start: '07:40', end: '10:30', event: 'ECN111', isFree: true }, { start: '10:40', end: '13:30', event: 'ECN111', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '17:10', event: 'ECN111', isFree: false },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], 'Fri': [ { start: '07:40', end: '10:30', event: 'ECN11', isFree: false }, { start: '10:40', end: '11:30', event: 'THL121', isFree: false }, { start: '11:40', end: '13:30', event: 'Free', isFree: true },{ start: '13:40', end: '14:10', event: 'Free', isFree: true },{ start: '14:20', end: '17:10', event: 'Free', isFree: true },{ start: '17:20', end: '20:10', event: 'Free', isFree: true}, ], } },
+           
+            'C601': { id: 'C601', name: 'C-601', floor: 6, seats: 60, type: 'Lecture', equipment: 'Проектор, Микрофон', weeklySchedule: 
+            { 'Mon':[ { start: '07:40', end: '10:30', event: 'MKT331', isFree: false }, { start: '10:40', end: '13:30', event: 'Free', isFree: true }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '17:10', event: 'LAUD312', isFree: false }, { start: '17:20', end: '20:10', event: 'Free', isFree: true }],
+             'Tue': [ { start: '08:40', end: '10:30', event: 'E216', isFree: false }, { start: '10:40', end: '13:30', event: 'LACC111', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '17:10', event: 'Free', isFree: true }, { start: '17:20', end: '20:10', event: 'Free', isFree: true }],
+             'Wed': [ { start: '07:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'Free', isFree: true },{ start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '17:10', event: 'LDFI325', isFree: false }, { start: '17:20', end: '20:10', event: 'Free', isFree: true }],
+             'Thu': [ { start: '07:40', end: '10:30', event: 'ETL111', isFree: false } ,{ start: '10:40', end: '13:30', event: 'ECMG203', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '17:10', event: 'HSS201', isFree: false }, { start: '17:20', end: '20:10', event: 'Free', isFree: true }],
+             'Fri': [ { start: '07:40', end: '09:30', event: 'FIN122', isFree: false },{ start: '09:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'MLS111', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '17:10', event: 'Free', isFree: true }, { start: '17:20', end: '20:10', event: 'Free', isFree: true }], } },
+            'C602': { id: 'C602', name: 'C-602', floor: 6, seats: 30, type: 'Seminar', equipment: 'Проектор', weeklySchedule:
+             { 'Mon': [ { start: '07:40', end: '09:30', event: 'IPL433', isFree: false },{ start: '09:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '12:30', event: 'IPL433', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'CRL222', isFree: false }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }],
+             'Tue': [ { start: '07:40', end: '09:30', event: 'CRL222', isFree: false }, { start: '09:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'ETL111', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'FAL341', isFree: false }, { start: '17:20', end: '20:10', event: 'Free', isFree: true }],
+             'Wed': [ { start: '07:40', end: '09:30', event: 'ETL111', isFree: false } ,{ start: '09:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'Free', isFree: true }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '17:10', event: 'INT337', isFree: false }, { start: '17:20', end: '20:10', event: 'LAW321', isFree: false }], 
+             'Thu': [ { start: '07:40', end: '09:30', event: 'PFL431', isFree: false }, { start: '09:40', end: '10:30', event: 'IST121', isFree: false }, { start: '10:40', end: '12:30', event: 'ETL111', isFree: false }, { start: '12:40', end: '13:30', event: 'IST121', isFree: false } ,{ start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'THL121', isFree: false }, { start: '17:20', end: '20:10', event: 'Free', isFree: true }],
+             'Fri': [ { start: '07:40', end: '09:30', event: 'LAW321', isFree: false } ,{ start: '09:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '12:30', event: 'LAW321', isFree: false }, { start: '12:40', end: '13:30', event: 'THL121', isFree: false },{ start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'Free', isFree: true }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }], } },
+            'C603': { id: 'C603', name: 'C-603', floor: 6, seats: 25, type: 'Lab', equipment: 'PC', weeklySchedule: 
+            { 'Mon':[{ start: '07:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'FML331', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '17:10', event: 'Free', isFree: true }, { start: '17:20', end: '20:10', event: 'Free', isFree: true }],
+            'Tue': [ { start: '07:40', end: '09:30', event: 'LAW321', isFree: false }, { start: '09:40', end: '10:30', event: 'Free', isFree: true },{ start: '10:40', end: '13:30', event: 'LSL221', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '17:10', event: 'CRL222', isFree: false }, { start: '17:20', end: '20:10', event: 'Free', isFree: true }],
+            'Wed': [ { start: '07:40', end: '09:30', event: 'CRL222', isFree: false },{ start: '09:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'CLT333', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'CLT333', isFree: false }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }],
+            'Thu': [ { start: '07:40', end: '09:30', event: 'CPL322', isFree: false } ,{ start: '09:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '12:30', event: 'LAW321', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'LAW321', isFree: false }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }],
+            'Fri': [ { start: '07:40', end: '10:30', event: 'Free', isFree: true } ,{ start: '10:40', end: '13:30', event: 'ISM435', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'CPL322', isFree: false }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }], } },
+            'C604': { id: 'C604', name: 'C-604', floor: 6, seats: 28, type: 'Seminar', equipment: 'Проектор', weeklySchedule:
+            { 'Mon': [ { start: '07:40', end: '20:10', event: 'Free', isFree: true } ], 
+            'Tue': [ { start: '07:40', end: '09:30', event: 'MAT111', isFree: false } ,{ start: '09:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'ACC121', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'MLS111', isFree: false }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }],
+            'Wed': [ { start: '07:40', end: '09:30', event: 'MAT115', isFree: false } ,{ start: '09:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'ACC121', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'MAT115', isFree: false }, { start: '16:20', end: '20:10', event: 'MLS111', isFree: false }],
+            'Thu': [ { start: '07:40', end: '10:30', event: 'MGM442', isFree: false }, { start: '10:40', end: '12:30', event: 'MAT115', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '17:10', event: 'ECM321', isFree: false }, { start: '17:20', end: '20:10', event: 'Free', isFree: true }], 
+            'Fri': [ { start: '07:40', end: '09:30', event: 'MAT115', isFree: false } ,{ start: '09:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '12:30', event: 'MAT115', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'Free', isFree: true }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }], } },
+            'C605': { id: 'C605', name: 'C-605', floor: 6, seats: 28, type: 'Seminar', equipment: 'Проектор', weeklySchedule: 
+            { 'Mon': [ { start: '07:40', end: '09:30', event: 'Free', isFree: true } ,{ start: '09:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'Free', isFree: true }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '17:10', event: 'ECN323', isFree: false }, { start: '17:20', end: '20:10', event: 'Free', isFree: true }], 
+            'Tue': [ { start: '07:40', end: '10:30', event: 'CHS111B', isFree: false }, { start: '10:40', end: '13:30', event: 'ECN438', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '17:10', event: 'ESN111', isFree: false }, { start: '17:20', end: '20:10', event: 'Free', isFree: true }],
+            'Wed': [ { start: '07:40', end: '10:30', event: 'ECN111', isFree: false } ,{ start: '10:40', end: '13:30', event: 'ECN111', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '17:10', event: 'FIN333', isFree: false }, { start: '17:20', end: '20:10', event: 'Free', isFree: true }],
+            'Thu': [ { start: '07:40', end: '10:30', event: 'ECN321', isFree: false } , { start: '10:40', end: '13:30', event: 'FIN122', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'Free', isFree: true }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }], 
+            'Fri': [ { start: '07:40', end: '09:30', event: 'LAW321', isFree: false } ,{ start: '09:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'BWL334', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'Free', isFree: true }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }], } },
+            'C606': { id: 'C606', name: 'C-606', floor: 6, seats: 20, type: 'Lab', equipment: 'PC', weeklySchedule: 
+            { 'Mon': [ { start: '07:40', end: '09:30', event: 'IPL432', isFree: false } ,{ start: '09:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '12:30', event: 'IPL432', isFree: false }, { start: '12:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'LAW321', isFree: false }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }],
+            'Tue': [ { start: '07:40', end: '10:30', event: 'Free', isFree: true } , { start: '10:40', end: '13:30', event: 'Free', isFree: true }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'LAW321', isFree: false }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }],
+            'Wed': [ { start: '07:40', end: '09:30', event: 'LAW321', isFree: false } ,{ start: '09:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'ICL331', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'CVL221', isFree: false }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }],
+            'Thu': [ { start: '07:40', end: '09:30', event: 'CVL221', isFree: false } ,{ start: '09:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'CVL221', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'CVL221', isFree: false }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }],
+            'Fri': [ { start: '07:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'ICL331', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'Free', isFree: true }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }], } },
+            'C607': { id: 'C607', name: 'C-607', floor: 6, seats: 80, type: 'Lecture', equipment: 'Проектор, Микрофон', weeklySchedule: 
+            { 'Mon': [ { start: '07:40', end: '10:30', event: 'MKT331', isFree: false } ,{ start: '10:40', end: '13:30', event: 'MKT331', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'Free', isFree: true }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }],
+            'Tue': [ { start: '07:40', end: '10:30', event: 'Free', isFree: true } , { start: '10:40', end: '13:30', event: 'MKT221', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'Free', isFree: true }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }], 
+            'Wed': [ { start: '07:40', end: '10:30', event: 'MKT221', isFree: false }, { start: '10:40', end: '13:30', event: 'MKT443', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'MKT445', isFree: false }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }],
+            'Thu': [ { start: '07:40', end: '09:30', event: 'INT425', isFree: false } ,{ start: '09:40', end: '10:30', event: 'Free', isFree: true }, { start: '10:40', end: '13:30', event: 'IBT431', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'ALW321', isFree: false }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }],
+            'Fri': [ { start: '07:40', end: '10:30', event: 'MKT221', isFree: false } , { start: '10:40', end: '13:30', event: 'MKT221', isFree: false }, { start: '13:40', end: '14:10', event: 'Free', isFree: true } ,{ start: '14:20', end: '16:10', event: 'Free', isFree: true }, { start: '16:20', end: '20:10', event: 'Free', isFree: true }], } },
+        };
+
+        const DAY_NAMES = { 'Mon': 'Даваа', 'Tue': 'Мягмар', 'Wed': 'Лхагва', 'Thu': 'Пүрэв', 'Fri': 'Баасан', 'Sat': 'Бямба', 'Sun': 'Ням'};
+        let currentDay = 'Mon';
+        let activeRoomId = null;
+
+        // --- UTILS ---
+        const getMinutes = (t) => { if(!t) return 0; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+        
+        function checkRealTimeAvailability(id, day, sStr, eStr) {
+            const start = getMinutes(sStr);
+            const end = getMinutes(eStr);
+            if(start >= end) return false;
+            const sched = roomData[id].weeklySchedule[day] || [];
+            return !sched.some(slot => !slot.isFree && (start < getMinutes(slot.end) && end > getMinutes(slot.start)));
+        }
+
+        function getRoomCurrentStatus(id, day) {
+            const now = new Date();
+            const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+            if(day !== days[now.getDay()]) return { status: 'free', text: 'СУЛ' };
+            
+            const nowMins = now.getHours() * 60 + now.getMinutes();
+            const sched = roomData[id].weeklySchedule[day] || [];
+            const isBusy = sched.some(s => !s.isFree && nowMins >= getMinutes(s.start) && nowMins < getMinutes(s.end));
+            return isBusy ? { status: 'busy', text: 'ХИЧЭЭЛТЭЙ' } : { status: 'free', text: 'СУЛ' };
+        }
+
+        // --- RENDER ---
+        function renderRooms() {
+            const grid5 = document.getElementById('grid5F');
+            const grid6 = document.getElementById('grid6F');
+            grid5.innerHTML = ''; grid6.innerHTML = '';
+            
+            const fSeats = parseInt(document.getElementById('fSeats').value) || 0;
+            const fType = document.getElementById('fType').value;
+
+            Object.values(roomData).forEach(r => {
+                // List View Filtering
+                if (r.seats < fSeats) return;
+                if (fType !== 'all' && r.type !== fType) return;
+
+                const status = getRoomCurrentStatus(r.id, currentDay);
+                
+                // Timeline
+                let timelineHtml = '<div class="timeline-bar">';
+                const sched = (r.weeklySchedule[currentDay] || []).sort((a,b) => getMinutes(a.start) - getMinutes(b.start));
+                const startM = 460; const endM = 1080; const total = endM - startM;
+                let lastEnd = startM;
+                
+                sched.forEach(s => {
+                    const sM = Math.max(startM, getMinutes(s.start));
+                    const eM = Math.min(endM, getMinutes(s.end));
+                    if(eM <= sM) return;
+                    if(sM > lastEnd) timelineHtml += `<div class="t-seg t-free" style="width:${((sM-lastEnd)/total)*100}%"></div>`;
+                    timelineHtml += `<div class="t-seg ${s.isFree?'t-free':'t-busy'}" style="width:${((eM-sM)/total)*100}%"></div>`;
+                    lastEnd = eM;
+                });
+                if(lastEnd < endM) timelineHtml += `<div class="t-seg t-free" style="width:${((endM-lastEnd)/total)*100}%"></div>`;
+                timelineHtml += '</div>';
+
+                const card = document.createElement('div');
+                card.className = `room-card ${activeRoomId === r.id ? 'active' : ''}`;
+                card.onclick = () => selectRoom(r.id);
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between;">
+                        <h4 style="font-weight:700;">${r.name}</h4>
+                        <span class="badge ${status.status}"><div class="dot"></div>${status.text}</span>
+                    </div>
+                    <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">${r.type} · ${r.seats} суудал</div>
+                    ${timelineHtml}
+                `;
+                if(r.floor === 5) grid5.appendChild(card); else grid6.appendChild(card);
+
+                // Map Update
+                const mapEl = document.querySelector(`.map-room[data-room="${r.id}"]`);
+                if(mapEl) {
+                    mapEl.className = `map-room ${status.status} ${activeRoomId === r.id ? 'active' : ''}`;
+                    mapEl.onclick = () => selectRoom(r.id);
+                }
+            });
+        }
+
+        function selectRoom(id) {
+            activeRoomId = id;
+            renderRooms();
+            document.getElementById('noSelectionMsg').style.display = 'none';
+            document.getElementById('roomContent').style.display = 'block';
+            
+            const r = roomData[id];
+            const st = getRoomCurrentStatus(id, currentDay);
+            
+            document.getElementById('dtName').textContent = r.name;
+            document.getElementById('dtMeta').textContent = `${r.floor}F · ${r.type} · ${r.seats} суудал`;
+            document.getElementById('dtStatusBadge').innerHTML = `<span class="badge ${st.status}"><div class="dot"></div>${st.text}</span>`;
+            
+            const list = document.getElementById('scheduleList');
+            list.innerHTML = '';
+            const sched = (r.weeklySchedule[currentDay] || []).sort((a,b) => getMinutes(a.start) - getMinutes(b.start));
+            
+            if(sched.length === 0) list.innerHTML = `<li style="text-align:center; color:var(--success);">Хичээлгүй, бүтэн өдөр сул.</li>`;
+            else {
+                sched.forEach(s => {
+                    list.innerHTML += `<li class="schedule-item"><span>${s.start} - ${s.end}</span> <span style="font-weight:600; color:${s.isFree?'var(--success)':'#0f172a'}">${s.event}</span></li>`;
+                });
+            }
+        }
+
+        // --- EVENTS ---
+        document.getElementById('filterForm').onsubmit = (e) => { e.preventDefault(); renderRooms(); };
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.onclick = () => {
+            document.querySelector('.tab-btn.active').classList.remove('active');
+            btn.classList.add('active');
+            currentDay = btn.dataset.day;
+            renderRooms();
+            if(activeRoomId) selectRoom(activeRoomId);
+        });
+
+        document.getElementById('btnList').onclick = function(){ 
+            document.getElementById('listView').style.display = 'block'; document.getElementById('mapView').style.display = 'none';
+            this.style.background = '#eff6ff'; this.style.color = '#2563eb';
+            document.getElementById('btnMap').style.background = 'transparent'; document.getElementById('btnMap').style.color = '#64748b';
+        };
+        document.getElementById('btnMap').onclick = function(){ 
+            document.getElementById('listView').style.display = 'none'; document.getElementById('mapView').style.display = 'block';
+            this.style.background = '#eff6ff'; this.style.color = '#2563eb';
+            document.getElementById('btnList').style.background = 'transparent'; document.getElementById('btnList').style.color = '#64748b';
+        };
+
+        // Student Modal
+        const modal = document.getElementById('modalOverlay');
+        const conflictMsg = document.getElementById('conflictMsg');
+        const btnConfirm = document.getElementById('btnConfirm');
+        
+        document.getElementById('openBookModal').onclick = () => {
+            if(!activeRoomId) return;
+            document.getElementById('bkRoomId').value = activeRoomId;
+            document.getElementById('bkRoomName').textContent = roomData[activeRoomId].name;
+            document.getElementById('bkDayName').textContent = DAY_NAMES[currentDay];
+            modal.style.display = 'flex';
+        };
+        
+        document.getElementById('closeModal').onclick = () => modal.style.display = 'none';
+        
+        function validateTime() {
+            const s = document.getElementById('bkStart').value;
+            const e = document.getElementById('bkEnd').value;
+            if(!s || !e) return;
+            const valid = checkRealTimeAvailability(activeRoomId, currentDay, s, e);
+            if(valid) { conflictMsg.classList.remove('visible'); btnConfirm.disabled = false; btnConfirm.innerHTML = 'Баталгаажуулах'; }
+            else { conflictMsg.classList.add('visible'); btnConfirm.disabled = true; btnConfirm.innerHTML = 'Давхцалтай'; }
+        }
+        document.getElementById('bkStart').oninput = validateTime;
+        document.getElementById('bkEnd').oninput = validateTime;
+
+        document.getElementById('bookingForm').onsubmit = (e) => {
+            e.preventDefault();
+            modal.style.display = 'none';
+            const t = document.getElementById('toast');
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        };
+
+        // --- NEW TEACHER BOOKING LOGIC ---
+        const teacherModal = document.getElementById('teacherModalOverlay');
+        const openTeacherBtn = document.getElementById('openTeacherModal'); // Энэ товч одоо HTML-д байгаа
+        const closeTeacherBtn = document.getElementById('closeTeacherModal');
+        const teacherForm = document.getElementById('teacherBookingForm');
+
+        // Check if button exists before adding listener (it's created dynamically in JS in previous logic but here hardcoded in HTML for stability)
+        // Since we moved button to HTML, we can just grab it.
+        if (openTeacherBtn) {
+            openTeacherBtn.onclick = () => {
+                if(!activeRoomId) {
+                    alert("Өрөөг сонгоно уу!");
+                    return;
+                }
+                document.getElementById('tbRoomId').value = activeRoomId;
+                teacherModal.classList.add('show');
+            };
+        }
+
+        if (closeTeacherBtn) {
+            closeTeacherBtn.onclick = () => {
+                teacherModal.classList.remove('show');
+            };
+        }
+
+        // Close on outside click
+        window.onclick = (e) => {
+            if (e.target == teacherModal) {
+                teacherModal.classList.remove('show');
+            }
+            if (e.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        if(teacherForm) {
+            teacherForm.onsubmit = (e) => {
+                e.preventDefault();
+                teacherModal.classList.remove('show');
+                const t = document.getElementById('toast');
+                t.textContent = "✅ Багшийн зөвөлгөөний захиалга амжилттай!";
+                t.classList.add('show');
+                setTimeout(() => {
+                    t.classList.remove('show');
+                    t.textContent = "✅ Амжилттай хадгалагдлаа!"; // reset text
+                }, 3000);
+            };
+        }
+        // --- END TEACHER LOGIC ---
+
+        // Init
+        setInterval(() => document.getElementById('liveClock').textContent = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}), 1000);
+        const today = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date().getDay()];
+        if(DAY_NAMES[today]) { currentDay = today; document.querySelector(`[data-day="${today}"]`).classList.add('active'); }
+        else document.querySelector(`[data-day="Mon"]`).classList.add('active');
+        
+        renderRooms();
+// --- Өдрийн pill товч сонголт ---
+document.querySelectorAll(".day-pill").forEach(pill => {
+    pill.addEventListener("click", () => {
+        // бусдыг идэвхгүй болгох
+        document.querySelectorAll(".day-pill").forEach(x => x.classList.remove("active"));
+
+        // энэ pill-г идэвхжүүлэх
+        pill.classList.add("active");
+
+        // нууц input-т өдрийг хадгалах
+        document.getElementById("teacherDay").value = pill.dataset.day;
+    });
+});
+
+
+    </script>
+
+</body>
+</html>
